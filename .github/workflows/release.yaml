@@ -21,13 +21,38 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.22"
+      - name: update version
+        id: commit
+        run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: git update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{steps.commit.outputs.sha}}" -m "[bot] Release v${{steps.commit.outputs.sha}}"
+
       - name: build
         run: make build
       - name: Release
         id: release
         uses: softprops/action-gh-release@4634c16e79c963813287e889244c50009e7f0981
         with:
+          tag_name: "v${{steps.commit.outputs.sha}}"
+          name: "v${{steps.commit.outputs.sha}}"
           generate_release_notes: false
           target_commitish: "main"
           files: |
             bin/*
+  merge:
+    timeout-minutes: 5
+    needs: release
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: merge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull origin main
+          git push origin develop
